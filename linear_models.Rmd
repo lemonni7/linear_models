@@ -1,0 +1,92 @@
+---
+title: "linear_models"
+output: html_document
+date: "2024-09-09"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(readr)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_color_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+## Import data
+
+```{r}
+zz <- gzfile("listings.csv.gz")   
+airbnb_location_df =
+  read_csv(zz) %>% 
+  select(id, review_scores_location)
+
+airbnb_listings_df =
+  read_csv(file = "./listings.csv") %>% 
+  mutate(last_review = as.Date(last_review, format = "%Y-%m-%d"))
+
+nyc_airbnb = inner_join(airbnb_location_df, airbnb_listings_df, by = "id")
+
+save(nyc_airbnb, file = "nyc_airbnb.RData")
+```
+
+```{r}
+nyc_airbnb =
+  nyc_airbnb %>% 
+  mutate(stars = review_scores_location) %>% 
+  rename(
+    borough = neighbourhood_group,
+    neighborhood = neighbourhood) %>% 
+  filter(borough != "Staten Island") %>% 
+  select(price, stars, borough, neighborhood, room_type)
+
+nyc_airbnb
+```
+
+## Fit a model
+
+```{r}
+nyc_airbnb %>% 
+  ggplot(aes(x = stars, y = price, color = borough)) +
+  geom_point()
+```
+
+Fit a linear model
+
+```{r}
+fit = lm(price ~ stars + borough, data = nyc_airbnb)
+```
+
+```{r, include = FALSE}
+fit
+
+summary(fit)
+summary(fit)$coef
+coef(fit)
+```
+
+Tidy up data
+
+```{r}
+broom::glance(fit)
+
+broom::tidy(fit) %>% 
+  select(-std.error, -statistic) %>%
+  mutate(
+    term = str_replace(term, "borough", "Borough: ")
+  ) %>% 
+knitr::kable(digits = 3)
+```
+
